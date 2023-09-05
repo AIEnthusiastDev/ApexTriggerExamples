@@ -1,0 +1,22 @@
+Upon Account Creation if Industry is not null and having value as ‘Media’ then
+populate Rating as Hot.
+Solution:
+---------------------------------------------------------------------------
+trigger AccountTrigger on Account (before insert) {
+if(Trigger.isInsert){
+if(Trigger.isBefore){
+AccountTriggerHandler.updateRating(Trigger.New);
+}
+}
+}
+-----------------------------------------------------------------------------
+Apex class:
+public class AccountTriggerHandler {
+public static void updateRating(List<Account> accList){
+for(Account acc:accList){
+if(acc.Industry!=null && acc.Industry=='Media'){
+acc.Rating='Hot';
+}
+}
+}
+}
