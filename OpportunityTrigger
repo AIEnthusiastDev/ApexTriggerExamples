@@ -1,0 +1,23 @@
+Upon Opportunity Creation if Amount is not null and is greater than 100000 then
+populate ‘Hot Opportunity’ in description field.
+Solution:
+--------------------------------------------------------
+trigger OpportunityTrigger on Opportunity (before insert) {
+if(Trigger.isInsert){
+if(Trigger.isBefore){
+OpportunityTriggerHandler.updateDesc(Trigger.New);
+}
+}
+}
+---------------------------------------------
+Apex Class:
+--------------------------------------------
+public class OpportunityTriggerHandler {
+public static void updateDesc(List<Opportunity> oppList){
+for(Opportunity opp:oppList){
+if(opp.Amount!=null && opp.Amount>100000){
+opp.Description='Hot Opportunity';
+}
+}
+}
+}
