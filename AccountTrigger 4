@@ -1,0 +1,24 @@
+Create a related Contact when an Account is created.
+Solution:
+trigger AccountTrigger on Account (after insert) {
+if(Trigger.isInsert){
+if(Trigger.isAfter){
+AccountTriggerHandler.createContact(Trigger.New);
+}
+}
+}
+public class AccountTriggerHandler {
+public static void createContact(List<Account> accList){
+List<Contact> conList = new List<Contact>();
+for(Account acc: accList){
+Contact con= new Contact();
+con.FirstName = acc.Name + 'FN';
+con.LastName = acc.Name + 'LN';
+con.AccountId = acc.Id;
+conList.add(con);
+}
+if(!conList.isEmpty()){
+insert conList;
+}
+}
+}
