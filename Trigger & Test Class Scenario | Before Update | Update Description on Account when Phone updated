@@ -1,0 +1,204 @@
+trigger AccountTrigger on Account (before insert,after insert, before update) {
+
+    if(Trigger.isInsert){
+        if(Trigger.isBefore){
+            AccountTriggerHandler.updateRating(Trigger.New);
+            AccountTriggerHandler.copyBillingToShipping(Trigger.New);
+        }else if(Trigger.isAfter){
+            //AccountTriggerHandler.createRelatedContact(Trigger.New);
+            //AccountTriggerHandler.createRelatedOpp(Trigger.New);
+        }
+    }
+    
+    if(Trigger.isUpdate){
+        if(Trigger.isBefore){
+            AccountTriggerHandler.updateAccDescOnPhoneUpdate(Trigger.New,Trigger.oldMap);
+        }
+    }
+    
+}
+------------------------------------------------------------------
+public class AccountTriggerHandler {
+
+    public static void updateRating(List<Account> accList){
+        for(Account acc: accList){
+            if(acc.Industry == 'Media' || acc.Industry == 'Energy'){
+                acc.Rating = 'Hot';
+            }
+        }
+    }
+    
+    public static void copyBillingToShipping(List<Account> accList){
+        for(Account acc : accList){
+            if(acc.copyBillingToShipping__c && acc.BillingCity != null){
+                acc.ShippingCity = acc.BillingCity;
+                acc.ShippingCountry = acc.BillingCountry;
+                acc.ShippingPostalCode = acc.BillingPostalCode;
+                acc.ShippingState = acc.BillingState;
+                acc.ShippingStreet = acc.BillingStreet;
+            }
+        }
+    }
+    public static void createRelatedOpp(List<Account> accList){
+        List<Opportunity> oppList = new List<Opportunity>();
+        
+        for(Account acc:accList){
+            Opportunity opp = new Opportunity();
+            opp.Name = acc.Name;
+            opp.StageName = 'Prospecting';
+            opp.CloseDate = system.today();
+            opp.AccountId = acc.Id;
+            oppList.add(opp);
+        }
+        if(!oppList.isEmpty()){
+            insert oppList;
+        }
+        
+    }
+    
+    
+    public static void createRelatedContact(List<Account> accList){
+        List<Contact> conList = new List<Contact>();
+        for(Account acc : accList){
+            Contact con = new Contact();
+            con.FirstName = 'Test FName';
+            con.LastName =  'Test LName' + acc.Name;
+            con.AccountId = acc.id;
+            conList.add(con);
+        }
+        if(!conList.isEmpty()){
+            insert conList;
+        }
+    }
+    
+    public static void updateAccDescOnPhoneUpdate(List<Account> accList,Map<Id, Account>oldAccMap){
+        
+        for(Account acc : acclist){
+            if(acc.Phone != oldAccMap.get(acc.Id).Phone){
+                acc.Description = 'Phone is Updated! Old value:'+ oldAccMap.get(acc.Id).Phone +
+                    ' & New value: '+ acc.Phone;
+            }
+        }        
+        
+    }    
+    
+    
+}
+--------------------------------------------------------------------------------------
+@isTest
+public class AccountTriggerHandlerTest {
+    
+    @isTest
+    public static void createRelatedOppTest(){
+          //create sample data
+        List<Account> accList = new List<Account>();
+        
+        for(Integer i=1;i<5;i++){
+            Account acc = new Account();
+            acc.Name = 'Test' +i;
+            accList.add(acc);
+        }
+        //insert data
+        Test.startTest();
+        insert accList;
+        Test.stopTest();
+        
+        List<Opportunity> oppList = [SELECT Id FROM Opportunity WHERE AccountId =: accList[0].Id];
+        System.assert(oppList!=null, 'Opportunity is not created');
+    }
+
+    @isTest
+    public static void createRelatedContactTest(){
+        //create sample data
+        List<Account> accList = new List<Account>();
+        
+        for(Integer i=1;i<5;i++){
+            Account acc = new Account();
+            acc.Name = 'Test' +i;
+            accList.add(acc);
+        }
+        //insert data
+        Test.startTest();
+        insert accList;
+        Test.stopTest();
+        
+        List<Contact> conList = [SELECT Id FROM Contact WHERE AccountId =: accList[0].Id];
+        System.assert(conList!=null, 'Contact is not created');
+        
+    }
+    @isTest
+    public static void copyBillingToShippingTest(){
+        //create sample data
+        List<Account> accList = new List<Account>();
+        
+        for(Integer i=1;i<5;i++){
+            Account acc = new Account();
+            acc.Name = 'Test' + i;
+           acc.BillingCity = 'TestCity';
+            acc.BillingCountry = 'TestCountry';
+            acc.BillingPostalCode = '1234';
+            acc.BillingState = 'TestState';
+            acc.BillingStreet = 'TestStreet';
+            acc.copyBillingToShipping__c = true;
+            accList.add(acc);
+
+        }
+        //insert data
+        Test.startTest();
+        insert accList;
+        Test.stopTest();
+        
+        List<Account> updatedAccList = [SELECT Id, ShippingCity FROM Account
+                                       WHERE Id = : accList[0].Id];
+        System.assertEquals('TestCity', updatedAccList[0].ShippingCity);
+        }
+    
+    
+    
+     @isTest
+    public static void updateRatingTest(){
+        //create sample data
+        List<Account> accList = new List<Account>();
+        
+        for(Integer i=1;i<=5;i++){
+            Account acc = new Account();
+            acc.Name = 'Test'+i;
+            acc.Industry = 'Energy';
+            accList.add(acc);
+        }
+        //insert data
+        Test.startTest();
+        insert accList;
+        Test.stopTest();
+    }
+    
+    @isTest
+    private static void testupdateAccDescOnPhoneUpdate(){
+        List<Account> accList = new List<Account>();
+        
+        for(Integer i=1;i<=5;i++){
+            Account acc = new Account();
+            acc.Name = 'Test'+i;
+            acc.Phone = '123456789';
+            accList.add(acc);
+        }
+        
+         //inserted account records
+        Test.startTest();
+        insert accList;
+        
+        //updated account records
+        for(Account acc : accList){
+            acc.Phone = '303030303';
+        }
+        update accList;
+        test.stopTest();
+        
+        List<Account> updatedAccList =[Select Id,Phone FROM Account
+                               Where Id =: accList[0].Id];
+        system.assertEquals('303030303',accList[0].Phone,'Phone is not updated!!!');
+        
+    }
+    
+    
+}
